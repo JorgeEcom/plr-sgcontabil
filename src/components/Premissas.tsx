@@ -27,10 +27,12 @@ export default function Premissas({ semestreId, isAdmin, onChange }: Props) {
   const [data, setData] = useState<Omit<TPremissas, 'id' | 'semestre_id'>>(DEFAULTS)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('premissas').select('*').eq('semestre_id', semestreId).maybeSingle()
-      .then(({ data: d }) => {
+      .then(({ data: d, error: e }) => {
+        if (e) { setError('Erro ao carregar premissas: ' + e.message); return }
         if (d) {
           const { id: _id, semestre_id: _sid, ...rest } = d as TPremissas
           setData(rest)
@@ -45,14 +47,19 @@ export default function Premissas({ semestreId, isAdmin, onChange }: Props) {
 
   async function save() {
     setSaving(true)
+    setError(null)
     const payload = { semestre_id: semestreId, ...data }
-    const { data: saved } = await supabase
+    const { data: result, error: err } = await supabase
       .from('premissas')
       .upsert(payload, { onConflict: 'semestre_id' })
       .select()
       .single()
-    if (saved) onChange(saved as TPremissas)
     setSaving(false)
+    if (err) {
+      setError('Erro ao salvar: ' + err.message)
+      return
+    }
+    if (result) onChange(result as TPremissas)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -133,15 +140,4 @@ export default function Premissas({ semestreId, isAdmin, onChange }: Props) {
         </div>
         <p className={`mt-2 text-sm font-medium ${Math.abs(pesoTotal - 1) < 0.001 ? 'text-green-600' : 'text-red-600'}`}>
           Total: {fmt.perc(pesoTotal)} {Math.abs(pesoTotal - 1) < 0.001 ? '✓' : '— deve ser 100%'}
-        </p>
-      </div>
-
-      {isAdmin && (
-        <button onClick={save} disabled={saving} className="btn-primary">
-          <Save size={16} />
-          {saving ? 'Salvando...' : saved ? 'Salvo!' : 'Salvar premissas'}
-        </button>
-      )}
-    </div>
-  )
-}
+    
