@@ -22,10 +22,15 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
   const [novo, setNovo] = useState(EMPTY_COLAB)
   const [adding, setAdding] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   async function load() {
-    const { data: cs } = await supabase.from('colaboradores').select('*').eq('ativo', true).order('nome')
-    const { data: ss } = await supabase.from('colaboradores_semestre').select('*').eq('semestre_id', semestreId)
+    const { data: cs, error: e1 } = await supabase.from('colaboradores').select('*').eq('ativo', true).order('nome')
+    const { data: ss, error: e2 } = await supabase.from('colaboradores_semestre').select('*').eq('semestre_id', semestreId)
+    if (e1 || e2) {
+      setSaveError('Erro ao carregar colaboradores: ' + (e1?.message ?? e2?.message))
+      return
+    }
     if (cs) {
       const merged: ColaboradorCompleto[] = (cs as Colaborador[]).map(c => ({
         ...c,
@@ -41,12 +46,15 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
   async function addColab() {
     if (!novo.nome || !novo.data_admissao || !novo.data_funcao_atual) return
     setAdding(true)
-    const { data } = await supabase.from('colaboradores').insert({ ...novo, ativo: true }).select().single()
+    setSaveError(null)
+    const { data, error: e } = await supabase.from('colaboradores').insert({ ...novo, ativo: true }).select().single()
+    if (e) { setSaveError('Erro ao adicionar colaborador: ' + e.message); setAdding(false); return }
     if (data) {
-      await supabase.from('colaboradores_semestre').insert({
+      const { error: e2 } = await supabase.from('colaboradores_semestre').insert({
         semestre_id: semestreId, colaborador_id: data.id,
         treinamentos_realizados: 0, nota_kpi_individual: 0, nota_ciclo_anterior: 0,
       })
+      if (e2) { setSaveError('Colaborador criado mas erro ao vincular semestre: ' + e2.message) }
       setNovo(EMPTY_COLAB)
       setShowForm(false)
       await load()
@@ -56,29 +64,56 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
 
   async function removeColab(id: string) {
     if (!confirm('Desativar colaborador?')) return
-    await supabase.from('colaboradores').update({ ativo: false }).eq('id', id)
+    const { error: e } = await supabase.from('colaboradores').update({ ativo: false }).eq('id', id)
+    if (e) { setSaveError('Erro ao desativar: ' + e.message); return }
     await load()
   }
 
   async function updateSemestre(colabId: string, field: keyof Omit<ColaboradorSemestre, 'id' | 'semestre_id' | 'colaborador_id'>, val: string) {
     const v = parseFloat(val) || 0
+
+    // Optimistic local update so input doesn't revert while DB call is in-flight
+    setColabs(prev => {
+      const updated = prev.map(c => {
+        if (c.id !== colabId) return c
+        const semestre = c.semestre
+          ? { ...c.semestre, [field]: v }
+          : { id: '', semestre_id: semestreId, colaborador_id: colabId, treinamentos_realizados: 0, nota_kpi_individual: 0, nota_ciclo_anterior: 0, [field]: v }
+        return { ...c, semestre }
+      })
+      onChange(updated)
+      return updated
+    })
+
     const existing = colabs.find(c => c.id === colabId)?.semestre
+    let err = null
     if (existing?.id) {
-      await supabase.from('colaboradores_semestre').update({ [field]: v }).eq('id', existing.id)
+      const { error } = await supabase.from('colaboradores_semestre').update({ [field]: v }).eq('id', existing.id)
+      err = error
     } else {
-      await supabase.from('colaboradores_semestre').insert({
+      const { error } = await supabase.from('colaboradores_semestre').insert({
         semestre_id: semestreId, colaborador_id: colabId,
         treinamentos_realizados: 0, nota_kpi_individual: 0, nota_ciclo_anterior: 0,
         [field]: v,
       })
+      err = error
     }
-    await load()
+    if (err) {
+      setSaveError('Erro ao salvar: ' + err.message)
+      await load() // revert to DB state on error
+    }
   }
 
   const eligibleCount = premissas ? colabs.filter(c => isElegivel(c, premissas)).length : 0
 
   return (
     <div className="space-y-4">
+      {saveError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm flex justify-between items-center">
+          <span>{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="ml-2 text-red-500 hover:text-red-700 font-bold">×</button>
+        </div>
+      )}
       {/* Resumo */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-gray-50 rounded-lg p-3 text-center">
@@ -208,7 +243,7 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
                   <label className="label">Nível</label>
                   <select className="input" value={novo.nivel}
                     onChange={e => setNovo(p => ({ ...p, nivel: e.target.value }))}>
-                    {NIVEIS.map(n => <option key={n}>{n}</option>)}
+                    {NIVEIS.map(n => <option key={n}>{n</option>)}
                   </select>
                 </div>
                 <div>
