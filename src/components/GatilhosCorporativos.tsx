@@ -29,10 +29,13 @@ function Status({ ok, label }: { ok: boolean; label: string }) {
 export default function GatilhosCorporativos({ semestreId, premissas, isAdmin, onChange }: Props) {
   const [data, setData] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('gatilhos').select('*').eq('semestre_id', semestreId).maybeSingle()
-      .then(({ data: d }) => {
+      .then(({ data: d, error: e }) => {
+        if (e) { setError('Erro ao carregar gatilhos: ' + e.message); return }
         if (d) {
           const { id: _id, semestre_id: _sid, ...rest } = d as TGatilhos
           setData(rest)
@@ -52,8 +55,17 @@ export default function GatilhosCorporativos({ semestreId, premissas, isAdmin, o
 
   async function save() {
     setSaving(true)
-    await supabase.from('gatilhos').upsert({ semestre_id: semestreId, ...data }, { onConflict: 'semestre_id' })
+    setError(null)
+    const { error: err } = await supabase
+      .from('gatilhos')
+      .upsert({ semestre_id: semestreId, ...data }, { onConflict: 'semestre_id' })
     setSaving(false)
+    if (err) {
+      setError('Erro ao salvar: ' + err.message)
+      return
+    }
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   if (!premissas) return <p className="text-gray-400 text-sm">Preencha as premissas primeiro.</p>
@@ -171,10 +183,16 @@ export default function GatilhosCorporativos({ semestreId, premissas, isAdmin, o
         </table>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">
+          {error}
+        </div>
+      )}
+
       {isAdmin && (
         <button onClick={save} disabled={saving} className="btn-primary">
           <Save size={16} />
-          {saving ? 'Salvando...' : 'Salvar gatilhos'}
+          {saving ? 'Salvando...' : saved ? 'Salvo! ✓' : 'Salvar gatilhos'}
         </button>
       )}
     </div>
