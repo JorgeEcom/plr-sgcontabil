@@ -14,13 +14,16 @@ interface Props {
 export default function KPIsDepartamento({ semestreId, profile, onChange }: Props) {
   const [kpis, setKpis] = useState<KpiDepartamento[]>([])
   const [saving, setSaving] = useState<string | null>(null)
+  const [savedDept, setSavedDept] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const isAdmin = profile?.role === 'admin'
   const deptsVisiveis = isAdmin ? DEPARTAMENTOS : DEPARTAMENTOS.filter(d => d === profile?.departamento)
 
   useEffect(() => {
     supabase.from('kpis_departamento').select('*').eq('semestre_id', semestreId)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { setErrors(prev => ({ ...prev, _load: 'Erro ao carregar KPIs: ' + error.message })); return }
         if (data) { setKpis(data as KpiDepartamento[]); onChange(data as KpiDepartamento[]) }
       })
   }, [semestreId])
@@ -43,15 +46,22 @@ export default function KPIsDepartamento({ semestreId, profile, onChange }: Prop
 
   async function saveDept(dept: string) {
     setSaving(dept)
+    setErrors(prev => { const n = { ...prev }; delete n[dept]; return n })
     const deptKpis = KPIS_CONFIG[dept].map((_, i) => ({
       semestre_id: semestreId,
       departamento: dept,
       kpi_index: i,
       realizado: getVal(dept, i),
     }))
-    await supabase.from('kpis_departamento')
+    const { error } = await supabase.from('kpis_departamento')
       .upsert(deptKpis, { onConflict: 'semestre_id,departamento,kpi_index' })
     setSaving(null)
+    if (error) {
+      setErrors(prev => ({ ...prev, [dept]: 'Erro ao salvar: ' + error.message }))
+      return
+    }
+    setSavedDept(dept)
+    setTimeout(() => setSavedDept(null), 2000)
   }
 
   function canEdit(dept: string) {
@@ -60,6 +70,11 @@ export default function KPIsDepartamento({ semestreId, profile, onChange }: Prop
 
   return (
     <div className="space-y-8">
+      {errors._load && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">
+          {errors._load}
+        </div>
+      )}
       {deptsVisiveis.map(dept => {
         const kpisCfg = KPIS_CONFIG[dept] ?? []
         const notaFinal = calcularNotaDept(dept, kpis)
@@ -72,10 +87,13 @@ export default function KPIsDepartamento({ semestreId, profile, onChange }: Prop
                 <span className={`text-sm font-bold ${notaFinal >= 0.7 ? 'text-green-600' : notaFinal >= 0.5 ? 'text-yellow-600' : 'text-red-600'}`}>
                   Nota final: {fmt.perc(notaFinal)}
                 </span>
+                {errors[dept] && (
+                  <span className="text-xs text-red-600">{errors[dept]}</span>
+                )}
                 {canEdit(dept) && (
                   <button onClick={() => saveDept(dept)} disabled={saving === dept} className="btn-primary text-xs py-1.5 px-3">
                     <Save size={13} />
-                    {saving === dept ? 'Salvando...' : 'Salvar'}
+                    {saving === dept ? 'Salvando...' : savedDept === dept ? 'Salvo! ✓' : 'Salvar'}
                   </button>
                 )}
               </div>
@@ -116,27 +134,4 @@ export default function KPIsDepartamento({ semestreId, profile, onChange }: Prop
                             <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-8">
                               <div
                                 className={`h-1.5 rounded-full transition-all ${val >= 0.9 ? 'bg-green-500' : val >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                style={{ width: `${Math.min(100, val * 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="table-td font-medium text-brand-700">{fmt.perc(nota)}</td>
-                      </tr>
-                    )
-                  })}
-                  <tr className="bg-brand-50 font-semibold">
-                    <td className="table-td" colSpan={2}>TOTAL {dept.toUpperCase()}</td>
-                    <td className="table-td text-center">{fmt.perc(kpisCfg.reduce((s, k) => s + k.peso, 0))}</td>
-                    <td className="table-td">—</td>
-                    <td className="table-td text-brand-700 font-bold">{fmt.perc(notaFinal)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+                                style={{ width: `${Math.min(100,
