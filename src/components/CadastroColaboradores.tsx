@@ -13,7 +13,7 @@ interface Props {
 }
 
 const EMPTY_COLAB: Omit<Colaborador, 'id' | 'ativo'> = {
-  nome: '', departamento: 'Contabilidade', cargo: 'Auxiliar', nivel: 'Júnior',
+  nome: '', departamento: 'Contabilidade', cargo: 'Auxiliar', nivel: 'JÃºnior',
   data_admissao: '', data_funcao_atual: '',
 }
 
@@ -111,7 +111,7 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
       {saveError && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm flex justify-between items-center">
           <span>{saveError}</span>
-          <button onClick={() => setSaveError(null)} className="ml-2 text-red-500 hover:text-red-700 font-bold">×</button>
+          <button onClick={() => setSaveError(null)} className="ml-2 text-red-500 hover:text-red-700 font-bold">Ã</button>
         </div>
       )}
       {/* Resumo */}
@@ -122,11 +122,11 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
         </div>
         <div className="bg-green-50 rounded-lg p-3 text-center">
           <p className="text-2xl font-bold text-green-600">{eligibleCount}</p>
-          <p className="text-xs text-gray-500">Elegíveis ao PLR</p>
+          <p className="text-xs text-gray-500">ElegÃ­veis ao PLR</p>
         </div>
         <div className="bg-red-50 rounded-lg p-3 text-center">
           <p className="text-2xl font-bold text-red-600">{colabs.length - eligibleCount}</p>
-          <p className="text-xs text-gray-500">Não elegíveis</p>
+          <p className="text-xs text-gray-500">NÃ£o elegÃ­veis</p>
         </div>
       </div>
 
@@ -136,13 +136,13 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
           <thead>
             <tr>
               <th className="table-th">Nome</th>
-              <th className="table-th">Depto / Cargo / Nível</th>
-              <th className="table-th">Meses na função</th>
+              <th className="table-th">Depto / Cargo / NÃ­vel</th>
+              <th className="table-th">Meses na funÃ§Ã£o</th>
               <th className="table-th">Treinamentos</th>
               <th className="table-th">Nota KPI</th>
               <th className="table-th">Nota anterior</th>
               <th className="table-th">Elegibilidade</th>
-              {isAdmin && <th className="table-th">Ação</th>}
+              {isAdmin && <th className="table-th">AÃ§Ã£o</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -165,7 +165,7 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
                     <span className={meses >= 3 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>
                       {meses}m
                     </span>
-                    <span className="text-xs text-gray-400 block">{meses >= 3 ? '✓' : '✗ min 3m'}</span>
+                    <span className="text-xs text-gray-400 block">{meses >= 3 ? 'â' : 'â min 3m'}</span>
                   </td>
                   <td className="table-td">
                     <input type="number" min="0" max={premissas?.treinamentos_anuais ?? 4}
@@ -182,7 +182,7 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
                       value={nota}
                       onChange={e => updateSemestre(c.id, 'nota_kpi_individual', e.target.value)} />
                     <span className={`text-xs block mt-0.5 ${nota >= 0.6 ? 'text-green-600' : 'text-red-500'}`}>
-                      {nota >= 0.6 ? '✓' : '✗ min 60%'}
+                      {nota >= 0.6 ? 'â' : 'â min 60%'}
                     </span>
                   </td>
                   <td className="table-td">
@@ -192,9 +192,9 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
                       onChange={e => updateSemestre(c.id, 'nota_ciclo_anterior', e.target.value)} />
                   </td>
                   <td className="table-td">
-                    {elegivel === null ? '—' : elegivel
-                      ? <span className="badge-ok"><UserCheck size={12} /> Elegível</span>
-                      : <span className="badge-fail"><UserX size={12} /> Não elegível</span>}
+                    {elegivel === null ? 'â' : elegivel
+                      ? <span className="badge-ok"><UserCheck size={12} /> ElegÃ­vel</span>
+                      : <span className="badge-fail"><UserX size={12} /> NÃ£o elegÃ­vel</span>}
                   </td>
                   {isAdmin && (
                     <td className="table-td">
@@ -240,19 +240,19 @@ export default function CadastroColaboradores({ semestreId, premissas, isAdmin, 
                   </select>
                 </div>
                 <div>
-                  <label className="label">Nível</label>
+                  <label className="label">NÃ­vel</label>
                   <select className="input" value={novo.nivel}
                     onChange={e => setNovo(p => ({ ...p, nivel: e.target.value }))}>
-                    {NIVEIS.map(n => <option key={n}>{n</option>)}
+                    {NIVEIS.map(n => <option key={n}>{n}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="label">Data de admissão</label>
+                  <label className="label">Data de admissÃ£o</label>
                   <input type="date" className="input" value={novo.data_admissao}
                     onChange={e => setNovo(p => ({ ...p, data_admissao: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="label">Data início na função atual</label>
+                  <label className="label">Data inÃ­cio na funÃ§Ã£o atual</label>
                   <input type="date" className="input" value={novo.data_funcao_atual}
                     onChange={e => setNovo(p => ({ ...p, data_funcao_atual: e.target.value }))} />
                 </div>
