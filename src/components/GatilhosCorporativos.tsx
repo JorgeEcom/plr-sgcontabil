@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Gatilhos as TGatilhos, Premissas, GatilhosCalc } from '../types'
 import { calcularGatilhos } from '../lib/calculations'
@@ -10,6 +10,36 @@ interface Props {
   premissas: Premissas | null
   isAdmin: boolean
   onChange: (g: TGatilhos, calc: GatilhosCalc) => void
+}
+
+function MoneyInput({ value, onChange, disabled }: { value: number; onChange: (n: number) => void; disabled?: boolean }) {
+  const [focused, setFocused] = useState(false)
+  const [rawText, setRawText] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      className="input w-36"
+      disabled={disabled}
+      value={focused ? rawText : formatted}
+      onFocus={() => {
+        const editVal = value > 0 ? value.toFixed(2).replace('.', ',') : ''
+        setRawText(editVal)
+        setFocused(true)
+        setTimeout(() => inputRef.current?.select(), 0)
+      }}
+      onChange={e => {
+        const t = e.target.value.replace(/[^\d,.]/g, '')
+        setRawText(t)
+        const parsed = parseFloat(t.replace(/\./g, '').replace(',', '.')) || 0
+        onChange(parsed)
+      }}
+      onBlur={() => setFocused(false)}
+    />
+  )
 }
 
 const EMPTY: Omit<TGatilhos, 'id' | 'semestre_id'> = {
@@ -46,6 +76,15 @@ export default function GatilhosCorporativos({ semestreId, premissas, isAdmin, o
 
   function set(k: keyof typeof EMPTY, v: string) {
     const next = { ...data, [k]: parseFloat(v) || 0 }
+    setData(next)
+    if (premissas) {
+      const full = { ...next, semestre_id: semestreId }
+      onChange(full as TGatilhos, calcularGatilhos(full as TGatilhos, premissas))
+    }
+  }
+
+  function setMoney(k: keyof typeof EMPTY, v: number) {
+    const next = { ...data, [k]: v }
     setData(next)
     if (premissas) {
       const full = { ...next, semestre_id: semestreId }
@@ -113,8 +152,7 @@ export default function GatilhosCorporativos({ semestreId, premissas, isAdmin, o
               <td className="table-td font-medium">Faturamento semestral (R$)</td>
               <td className="table-td">{fmt.moeda(premissas.meta_faturamento)}</td>
               <td className="table-td">
-                <input type="number" className="input w-36" disabled={!isAdmin}
-                  value={data.fat_realizado} onChange={e => set('fat_realizado', e.target.value)} />
+                <MoneyInput value={data.fat_realizado} onChange={v => setMoney('fat_realizado', v)} disabled={!isAdmin} />
               </td>
               <td className="table-td">{fmt.perc(calc.percFat)}</td>
               <td className="table-td"><Status ok={calc.statusFat} label={calc.statusFat ? 'Atingido' : 'Não atingido'} /></td>
