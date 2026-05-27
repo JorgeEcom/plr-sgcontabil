@@ -137,6 +137,7 @@ export default function KPIsDepartamento({ semestreId, profile, onChange }: Prop
                                 style={{ width: `${Math.min(100, val * 100)}%` }}
                             />
                           </div>
+                          </div>
                         </td>
                         <td className="table-td font-medium text-brand-700">{fmt.perc(nota)}</td>
                       </tr>
