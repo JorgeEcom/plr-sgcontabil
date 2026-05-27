@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Premissas as TPremissas } from '../types'
 import { Save } from 'lucide-react'
@@ -8,6 +8,36 @@ interface Props {
   semestreId: string
   isAdmin: boolean
   onChange: (p: TPremissas) => void
+}
+
+function MoneyInput({ value, onChange, disabled }: { value: number; onChange: (n: number) => void; disabled?: boolean }) {
+  const [focused, setFocused] = useState(false)
+  const [rawText, setRawText] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      className="input"
+      disabled={disabled}
+      value={focused ? rawText : formatted}
+      onFocus={() => {
+        const editVal = value > 0 ? value.toFixed(2).replace('.', ',') : ''
+        setRawText(editVal)
+        setFocused(true)
+        setTimeout(() => inputRef.current?.select(), 0)
+      }}
+      onChange={e => {
+        const t = e.target.value.replace(/[^\d,.]/g, '')
+        setRawText(t)
+        const parsed = parseFloat(t.replace(/\./g, '').replace(',', '.')) || 0
+        onChange(parsed)
+      }}
+      onBlur={() => setFocused(false)}
+    />
+  )
 }
 
 const DEFAULTS: Omit<TPremissas, 'id' | 'semestre_id'> = {
@@ -45,6 +75,10 @@ export default function Premissas({ semestreId, isAdmin, onChange }: Props) {
     setData(prev => ({ ...prev, [k]: parseFloat(v) || 0 }))
   }
 
+  function updateMoney(k: keyof typeof DEFAULTS, v: number) {
+    setData(prev => ({ ...prev, [k]: v }))
+  }
+
   async function save() {
     setSaving(true)
     setError(null)
@@ -71,9 +105,11 @@ export default function Premissas({ semestreId, isAdmin, onChange }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
           <label className="label">Meta de faturamento semestral (R$)</label>
-          <input type="number" className="input" disabled={!isAdmin}
+          <MoneyInput
             value={data.meta_faturamento}
-            onChange={e => update('meta_faturamento', e.target.value)} />
+            onChange={v => updateMoney('meta_faturamento', v)}
+            disabled={!isAdmin}
+          />
           <p className="text-xs text-gray-400 mt-1">Total de honorários no semestre</p>
         </div>
         <div>
@@ -140,4 +176,21 @@ export default function Premissas({ semestreId, isAdmin, onChange }: Props) {
         </div>
         <p className={`mt-2 text-sm font-medium ${Math.abs(pesoTotal - 1) < 0.001 ? 'text-green-600' : 'text-red-600'}`}>
           Total: {fmt.perc(pesoTotal)} {Math.abs(pesoTotal - 1) < 0.001 ? '✓' : '— deve ser 100%'}
-    
+        </p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">
+          {error}
+        </div>
+      )}
+
+      {isAdmin && (
+        <button onClick={save} disabled={saving} className="btn-primary">
+          <Save size={16} />
+          {saving ? 'Salvando...' : saved ? 'Salvo! ✓' : 'Salvar premissas'}
+        </button>
+      )}
+    </div>
+  )
+}
