@@ -93,7 +93,7 @@ export default function KPIsDepartamento({ semestreId, profile, onChange }: Prop
                 {canEdit(dept) && (
                   <button onClick={() => saveDept(dept)} disabled={saving === dept} className="btn-primary text-xs py-1.5 px-3">
                     <Save size={13} />
-                    {saving === dept ? 'Salvando...' : savedDept === dept ? 'Salvo! â' : 'Salvar'}
+                    {saving === dept ? 'Salvando...' : savedDept === dept ? 'Salvo! ✓' : 'Salvar'}
                   </button>
                 )}
               </div>
@@ -106,7 +106,7 @@ export default function KPIsDepartamento({ semestreId, profile, onChange }: Prop
                     <th className="table-th">KPI</th>
                     <th className="table-th w-32">Meta</th>
                     <th className="table-th w-20">Peso</th>
-                    <th className="table-th w-36">Realizado (0â1)</th>
+                    <th className="table-th w-36">Realizado (0–1)</th>
                     <th className="table-th w-28">Nota ponderada</th>
                   </tr>
                 </thead>
@@ -135,8 +135,8 @@ export default function KPIsDepartamento({ semestreId, profile, onChange }: Prop
                               <div
                                 className={`h-1.5 rounded-full transition-all ${val >= 0.9 ? 'bg-green-500' : val >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'}`}
                                 style={{ width: `${Math.min(100, val * 100)}%` }}
-                            />
-                          </div>
+                              />
+                            </div>
                           </div>
                         </td>
                         <td className="table-td font-medium text-brand-700">{fmt.perc(nota)}</td>
